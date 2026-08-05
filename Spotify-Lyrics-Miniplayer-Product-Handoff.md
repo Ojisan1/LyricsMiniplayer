@@ -1,9 +1,9 @@
 # Product Requirements & Implementation Handoff
 
 **Project Name:** Spotify Lyrics Miniplayer  
-**Version:** 0.1  
-**Date:** 2026-08-04  
-**Status:** Ready for Development  
+**Version:** 1.2.0  
+**Date:** 2026-08-04 (original); status updated 2026-08-05  
+**Status:** Shipped (historical product / implementation spec — not a “ready for development” brief)  
 
 ---
 
@@ -63,15 +63,16 @@ Individual Windows users who listen to Spotify while working, coding, writing, o
 Windows 10 and Windows 11 (desktop)
 
 **Confirmed technology choices:**  
-- Language / Runtime: Python 3.11+  
+- Language / Runtime: Python 3.11+ (developed/tested through 3.14)  
 - Framework(s): CustomTkinter for the UI  
-- Now-playing source: Windows System Media Transport Controls (SMTC) via `winsdk`  
+- Now-playing source: Windows System Media Transport Controls (SMTC) via PyWinRT (`winrt-Windows.Media.Control` and related packages; replaced the older `winsdk` package, which does not install cleanly on newer Python without a C++ toolchain)  
 - Lyrics source: LRCLIB (https://lrclib.net) – free, no API key  
+- Album art: iTunes Search API (no API key)  
 - System tray: `pystray` + Pillow  
-- Packaging: PyInstaller (primary) or Nuitka  
+- Packaging: PyInstaller  
 - Auth approach: None required  
-- Key libraries already decided: `customtkinter`, `winsdk`, `pystray`, `Pillow`, `requests`  
-- Hosting / deployment target: Local executable (single .exe or simple folder distribution)
+- Key libraries: `customtkinter`, PyWinRT projections, `pystray`, `Pillow`, `requests`  
+- Hosting / deployment target: Local executable (single .exe or simple folder distribution via GitHub Releases)
 
 **Any hard constraints:**  
 - Must run without any Spotify Developer account or client ID/secret  
@@ -335,7 +336,7 @@ Dark, minimal, inspired by Spotify’s own miniplayer aesthetic. Prefer clarity 
 | How reliable is album art retrieval via SMTC across Spotify versions? | Cursor Grok | Open   | May need fallback |
 | LRCLIB rate limiting or occasional misses on less popular tracks | Product     | Open   | Acceptable for v1; monitor during testing |
 | CustomTkinter limitations for very smooth scrolling | Cursor Grok | Open   | May need to evaluate canvas or alternative approach in Phase 4 |
-| Long-term maintenance of `winsdk` package    | Product     | Open   | Currently the cleanest free option |
+| Long-term maintenance of PyWinRT SMTC bindings | Product   | Mitigated | Switched from `winsdk` to maintained PyWinRT projections for Python 3.14+ |
 
 ---
 
@@ -353,4 +354,4 @@ Dark, minimal, inspired by Spotify’s own miniplayer aesthetic. Prefer clarity 
 
 **End of Handoff Document**
 
-*This document is the single source of truth. Cursor Grok should treat it as authoritative. Any ambiguity should be raised to the Program Director rather than assumed.*
+*This document is a historical product / implementation spec for v1. For current user-facing docs, start at `README.md` and the GitHub Releases page. Ambiguity about shipped behavior should be checked against the code and README rather than assumed from older phase language here.*

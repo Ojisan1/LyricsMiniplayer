@@ -4,6 +4,10 @@
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
+![Spotify Lyrics Miniplayer showing timed lyrics and album art](docs/images/miniplayer-hero.png)
+
+![Short demo of the floating miniplayer with synced lyrics](docs/images/miniplayer-demo.gif)
+
 ## Installation
 
 1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.2.0.zip`.
@@ -96,7 +100,7 @@ Lyric scrolling and the title marquee both honour the Windows **“Show animatio
 **v1.1.0** — album-aware iTunes art matching (prefers the album Spotify is playing over compilations/singles).  
 **v1.0.0** — timed lyrics, UX polish, high-res iTunes art, redistributable zip.
 
-See `PHASE_STATUS.md` for history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the product spec.
+See `PHASE_STATUS.md` for internal build history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the historical product spec.
 
 ## Requirements
 
