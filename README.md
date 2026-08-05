@@ -131,6 +131,17 @@ uv pip compile --generate-hashes -o requirements.txt requirements.in
 - `python main.py --console` — console-only now-playing monitor
 - `python main.py --lyrics-test` — fetch lyrics for the current track
 
+### Tests
+
+Pure `core/` helpers are covered by `pytest` (no Spotify session required):
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+`requirements-dev.txt` is separate from the hashed release lockfile used by `build.ps1`.
+
 ### Pre-release security check
 
 ```bash

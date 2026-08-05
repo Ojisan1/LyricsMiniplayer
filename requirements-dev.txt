@@ -1,0 +1,5 @@
+# Development / test dependencies (not used by build.ps1).
+# Install after the hashed runtime lockfile:
+#   pip install --require-hashes -r requirements.txt
+#   pip install -r requirements-dev.txt
+pytest>=8.0.0
