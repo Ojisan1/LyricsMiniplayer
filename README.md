@@ -142,6 +142,8 @@ python -m pytest
 
 `requirements-dev.txt` is separate from the hashed release lockfile used by `build.ps1`.
 
+GitHub Actions (`.github/workflows/ci.yml`) runs the same pytest suite on `windows-latest`, installs the hashed lockfile, then `pip check`, `pip-audit`, and `compileall`. It does not launch the UI or require Spotify.
+
 ### Pre-release security check
 
 ```bash

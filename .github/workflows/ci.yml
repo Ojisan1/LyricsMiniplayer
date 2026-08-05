@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests + security checks
+    runs-on: windows-latest
+    # Windows runner so the hashed lockfile (including PyWinRT) installs cleanly.
+    # Pure core/ unit tests do not need a Spotify desktop session.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime lockfile (hashed)
+        run: python -m pip install --upgrade pip && python -m pip install --require-hashes -r requirements.txt
+
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Pytest
+        run: python -m pytest -q
+
+      - name: pip check
+        run: python -m pip check
+
+      - name: pip-audit
+        run: |
+          python -m pip install --quiet pip-audit
+          python -m pip_audit -r requirements.txt --progress-spinner off
+
+      - name: Compile all
+        run: python -m compileall -q main.py core ui tests
