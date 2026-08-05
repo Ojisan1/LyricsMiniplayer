@@ -1,0 +1,12 @@
+customtkinter>=5.2.0
+# winsdk does not ship wheels for Python 3.14 and requires MSVC to build.
+# Use the maintained PyWinRT projections instead (same Windows SMTC APIs).
+winrt-runtime>=3.2.1
+winrt-Windows.Foundation>=3.2.1
+winrt-Windows.Foundation.Collections>=3.2.1
+winrt-Windows.Media.Control>=3.2.1
+winrt-Windows.Storage.Streams>=3.2.1
+pystray>=0.19.5
+Pillow>=10.0.0
+requests>=2.31.0
+pyinstaller>=6.0.0
