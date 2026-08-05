@@ -199,6 +199,10 @@ This installs from the hashed lockfile and produces:
 
 SMTC access uses PyWinRT (`winrt-Windows.Media.Control`) rather than the older `winsdk` package, which does not install cleanly on Python 3.14 without a C++ build toolchain.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, build, and security-check steps.
+
 ## License
 
 [MIT](LICENSE). This project is not affiliated with Spotify, Apple, or LRCLIB; those services have their own terms.
