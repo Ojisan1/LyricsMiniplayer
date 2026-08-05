@@ -1,25 +1,80 @@
 # Spotify Lyrics Miniplayer
 
-**Version 1.0.0**
+**Version 1.1.0**
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
-## Download (Windows)
+## Installation
 
-Grab the latest zip from this repository’s **Releases** page:
+1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.1.0.zip`.
+2. Right-click the zip → **Extract All…** (or unzip with your usual tool) into any folder you like — Desktop, Documents, a USB stick, etc. There is **no installer**.
+3. Start the **Spotify desktop app** and play a track (the miniplayer reads what Windows reports as “now playing”).
+4. Open the unzipped folder and double-click **`LyricsMiniplayer.exe`**.
 
-1. Download `LyricsMiniplayer-v1.0.0.zip`
-2. Unzip anywhere
-3. Start Spotify and play a track
-4. Run `LyricsMiniplayer.exe`
+Settings are saved under `%APPDATA%\LyricsMiniplayer\` so you can move or delete the unzipped folder without losing preferences.
 
-No installer. Settings are stored under `%APPDATA%\LyricsMiniplayer\`.
+### Windows security warning (first launch)
 
-Windows SmartScreen may warn on first launch (unsigned personal build). Use **More info → Run anyway** if you trust the release you downloaded.
+Because this is a small personal open-source app, the `.exe` is **not code-signed** with a paid publisher certificate. Windows may show a blue **Windows protected your PC** (SmartScreen) dialog the first time you run it. That is normal for unsigned software and does **not** mean the file was altered after you downloaded it from this repo’s Releases page.
+
+If you downloaded the zip from **this project’s GitHub Releases** and trust that source:
+
+1. On the SmartScreen dialog, click **More info**.
+2. Click **Run anyway**.
+
+Windows usually only asks once for that file. If your antivirus quarantines the exe, restore/allow it the same way you would for other small open-source tools you chose to install.
+
+## How to use
+
+### The floating window
+
+Once running, a dark always-on-top panel appears (by default near the bottom-right of your screen, above the taskbar):
+
+| Part | What it does |
+|------|----------------|
+| **Album art** (left) | Cover for the current track. Hover brightens it slightly. |
+| **Title** | Song name. If it is too long for the row, it scrolls once, then returns to the start. Hover the title to replay the scroll. |
+| **Artist** | Artist name. |
+| **Status line** | Elapsed / duration, e.g. `1:42 / 2:38 · Synced`. Shows `Paused ·` when Spotify is paused, and `· Plain` when lyrics exist but are not time-synced. |
+| **Lyrics area** | Timed lines scroll with the music; the current line is white and bold. |
+| **⚙ (gear)** | Opens settings (see below). |
+| **— (dash)** | Hides the window to the system tray. **This does not quit the app.** |
+
+**Move the window:** click and drag anywhere on it.
+
+**Album art zoom:** click the art thumbnail to open a larger centered overlay. Close it by clicking the overlay (or the art again) or pressing **Escape**.
+
+### Settings (gear)
+
+| Setting | Meaning |
+|---------|---------|
+| **Window size** | Compact / Standard / Tall — same width, different heights (more or fewer lyric lines). Changing size snaps the window back to the tray corner. |
+| **Lyrics size** | Font size for the lyrics panel (independent of window size). |
+| **Opacity** | How translucent the window is. |
+| **Always on top** | Keep the miniplayer above other windows. |
+
+There is no resize border on the window; use **Window size** to change dimensions.
+
+### System tray
+
+The app keeps a tray icon (notification area, near the clock) even when the floating window is hidden:
+
+- **Hover** the icon to see the current track.
+- **Right-click** for the menu:
+  - Current track (informational)
+  - **Show lyrics** — checked when the window is visible; click to show or hide
+  - **Quit** — fully exits the app
+
+Hiding with **—** only closes the floating window; use **Quit** in the tray menu when you want to stop the program.
+
+Lyric scrolling and the title marquee both honour the Windows **“Show animations”** accessibility setting.
 
 ## Status
 
-**v1.0.0** — functional miniplayer with timed lyrics, UX polish (Tiers 1–3 core items), and clean high-resolution album art from iTunes. See `PHASE_STATUS.md` for history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the product spec.
+**v1.1.0** — album-aware iTunes art matching (prefers the album Spotify is playing over compilations/singles).  
+**v1.0.0** — timed lyrics, UX polish, high-res iTunes art, redistributable zip.
+
+See `PHASE_STATUS.md` for history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the product spec.
 
 ## Requirements
 
@@ -43,39 +98,6 @@ python main.py
 - `python main.py --console` — console-only now-playing monitor
 - `python main.py --lyrics-test` — fetch lyrics for the current track
 
-## Usage
-
-1. Start Spotify and play a track.
-2. Run `python main.py` (or the packaged `.exe`).
-3. The floating window stays on top and shows title, artist, album art, and synced lyrics.
-   The status line reads `1:42 / 2:38 · Synced`, with a `Plain` badge when only untimed
-   lyrics exist and a `Paused ·` prefix when playback is paused.
-4. A title too long for its row scrolls once on track change, then returns to the start and
-   stops. Hover the title to replay it.
-5. Click the album art to enlarge it to a centered overlay; click it again, click the
-   overlay, or press **Escape** to close.
-6. Drag anywhere on the window to move it. Use **—** to hide to the system tray (this does
-   not quit the app).
-7. Tray menu: a checked **Show lyrics** toggle plus **Quit**. The current track appears above
-   them and as the icon's hover tooltip.
-8. Use **⚙** for window size, lyrics size, opacity, and always-on-top.
-
-The window has no resize border, so **Window size** in the settings panel is how you resize it.
-Three presets are available, all 420 logical px wide and differing only in height — Compact
-(420 × 360, about 7 lyric lines), Standard (420 × 500, about 11) and Tall (420 × 680, about 17),
-measured at the default 14pt. Because the width never changes, a size change only adds or removes
-lyric lines and leaves the rest of the layout alone. Lyrics size stays on its own slider and is
-not affected by the preset. Changing size returns the window to the tray corner.
-
-Settings (window position, window size, opacity, font size, always-on-top) are saved under
-`%APPDATA%\LyricsMiniplayer\settings.json`. The window position is only written once you
-actually drag the window; until then, and again after any size change, it opens near the tray in
-the bottom-right corner of the work area, recomputed each launch so it survives resolution and
-taskbar changes.
-
-Lyric scrolling and the title marquee both honour the Windows "show animations"
-accessibility setting.
-
 ## Build a redistributable zip
 
 ```bash
@@ -87,13 +109,13 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 This produces:
 
 - `dist\LyricsMiniplayer.exe` — windowed, no console
-- `dist\LyricsMiniplayer-v1.0.0.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
+- `dist\LyricsMiniplayer-v1.1.0.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
 
 ## How it works
 
 - **Now playing:** Windows System Media Transport Controls (SMTC) via PyWinRT
 - **Lyrics:** [LRCLIB](https://lrclib.net) (free, no API key)
-- **Album art:** [iTunes Search API](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) (no API key; prefers 1200×1200)
+- **Album art:** [iTunes Search API](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) (no API key; prefers 1200×1200; ranks by SMTC album when available)
 - **UI:** CustomTkinter floating window + system tray (`pystray`)
 
 ## Project layout

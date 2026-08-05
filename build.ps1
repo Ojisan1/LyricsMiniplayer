@@ -3,7 +3,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-$Version = "1.0.0"
+$Version = "1.1.0"
 $ReleaseName = "LyricsMiniplayer-v$Version"
 
 if (-not (Test-Path .\.venv\Scripts\python.exe)) {

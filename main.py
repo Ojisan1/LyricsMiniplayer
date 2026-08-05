@@ -368,7 +368,9 @@ class MiniplayerApp:
         # Art first so it can paint as soon as iTunes returns, without waiting
         # on LRCLIB. Never clear existing art on failure — previous cover stays.
         try:
-            thumb_bytes = fetch_album_art(track.title, track.artist)
+            thumb_bytes = fetch_album_art(
+                track.title, track.artist, track.album
+            )
         except Exception:
             log.exception("Album art fetch failed")
             thumb_bytes = None
