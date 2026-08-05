@@ -24,7 +24,7 @@ from core.limits import (
 log = logging.getLogger(__name__)
 
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
-USER_AGENT = "SpotifyLyricsMiniplayer/0.1 (https://github.com/local/LyricsMiniplayer)"
+USER_AGENT = "SpotifyLyricsMiniplayer/1.2.0 (https://github.com/Ojisan1/LyricsMiniplayer)"
 REQUEST_TIMEOUT_S = 8
 # iTunes artwork URLs end with a size token like 100x100bb.jpg.
 _ARTWORK_SIZE = re.compile(r"\d+x\d+bb", re.IGNORECASE)

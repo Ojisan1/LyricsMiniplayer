@@ -121,8 +121,10 @@ sbom.cdx.json (CycloneDX JSON), and this provenance file under dist\.
 2. Confirm the SHA-256 of the file matches the line in SHA256SUMS.
 3. Optionally review sbom.cdx.json for the dependency inventory used at build time.
 
-This project does not Authenticode-sign the executable. Integrity is established
-via published checksums, the SBOM, and this build recipe - not a paid publisher certificate.
+This project does not Authenticode-sign the executable. Download consistency can
+be checked against the publisher-provided checksums; the SBOM and this build recipe
+describe its contents and production. Publisher identity is not cryptographically
+established by these artifacts.
 "@
 
 Write-Utf8NoBomFile -Path $provenancePath -Content $provenance

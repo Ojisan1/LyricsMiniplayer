@@ -16,7 +16,7 @@ from core.models import LyricLine, LyricsResult, NowPlaying
 log = logging.getLogger(__name__)
 
 LRCLIB_BASE = "https://lrclib.net/api"
-USER_AGENT = "SpotifyLyricsMiniplayer/0.1 (https://github.com/local/LyricsMiniplayer)"
+USER_AGENT = "SpotifyLyricsMiniplayer/1.2.0 (https://github.com/Ojisan1/LyricsMiniplayer)"
 REQUEST_TIMEOUT_S = 8
 
 # [mm:ss], [mm:ss.xx], or [mm:ss.xxx]

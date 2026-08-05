@@ -4,6 +4,10 @@
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
+![Spotify Lyrics Miniplayer showing timed lyrics and album art](docs/images/miniplayer-hero.png)
+
+![Short demo of the floating miniplayer with synced lyrics](docs/images/miniplayer-demo.gif)
+
 ## Installation
 
 1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.2.0.zip`.
@@ -96,7 +100,7 @@ Lyric scrolling and the title marquee both honour the Windows **“Show animatio
 **v1.1.0** — album-aware iTunes art matching (prefers the album Spotify is playing over compilations/singles).  
 **v1.0.0** — timed lyrics, UX polish, high-res iTunes art, redistributable zip.
 
-See `PHASE_STATUS.md` for history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the product spec.
+See `PHASE_STATUS.md` for internal build history and `Spotify-Lyrics-Miniplayer-Product-Handoff.md` for the historical product spec.
 
 ## Requirements
 
@@ -126,6 +130,19 @@ uv pip compile --generate-hashes -o requirements.txt requirements.in
 - `python main.py --once` — single SMTC snapshot
 - `python main.py --console` — console-only now-playing monitor
 - `python main.py --lyrics-test` — fetch lyrics for the current track
+
+### Tests
+
+Pure `core/` helpers are covered by `pytest` (no Spotify session required):
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+`requirements-dev.txt` is separate from the hashed release lockfile used by `build.ps1`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same pytest suite on `windows-latest`, installs the hashed lockfile, then `pip check`, `pip-audit`, and `compileall`. It does not launch the UI or require Spotify.
 
 ### Pre-release security check
 
@@ -167,7 +184,14 @@ This installs from the hashed lockfile and produces:
 | `core/artwork.py` | iTunes album art fetch |
 | `core/limits.py` | Hard caps for untrusted remote content |
 | `core/settings.py` | Persistent settings |
-| `ui/miniplayer.py` | Floating window, size presets, state screens, art zoom, title marquee |
+| `ui/miniplayer.py` | Floating window shell + public `MiniplayerWindow` entry |
+| `ui/theme.py` | Colors, fonts, size presets, shared UI constants |
+| `ui/win32_geom.py` | Work area, DPI scaling, rounded window region |
+| `ui/lyrics_panel.py` | Lyrics textbox, state screens, sync scroll |
+| `ui/title_marquee.py` | Overflowing title marquee |
+| `ui/album_art.py` / `ui/art_images.py` | Thumbnail, hover, zoom overlay |
+| `ui/settings_panel.py` | Settings panel controls |
+| `ui/tooltip.py` | Hover tooltips |
 | `ui/tray.py` | System tray |
 | `requirements.in` | Direct dependency constraints |
 | `requirements.txt` | Pinned lockfile with hashes |
@@ -181,6 +205,10 @@ This installs from the hashed lockfile and produces:
 ## Dependencies note
 
 SMTC access uses PyWinRT (`winrt-Windows.Media.Control`) rather than the older `winsdk` package, which does not install cleanly on Python 3.14 without a C++ build toolchain.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, build, and security-check steps.
 
 ## License
 

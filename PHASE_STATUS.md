@@ -1,5 +1,9 @@
 # Phase Status
 
+> **Internal build history.** This file is a phase-by-phase development diary for
+> maintainers. End users should start at [README.md](README.md) and the
+> [GitHub Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases) page.
+
 | Phase | Name | Status |
 |-------|------|--------|
 | 0 | Project Foundation | Completed (approved) |
