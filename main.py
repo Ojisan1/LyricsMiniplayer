@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from core.artwork import fetch_album_art
 from core.lyrics import LyricsService, current_line_index
@@ -90,6 +90,11 @@ class MiniplayerApp:
         self._stopping = False
         self._current_identity: tuple | None = None
         self._fetch_generation = 0
+        # Single worker avoids a thread/request stampede when skipping tracks.
+        self._fetch_executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="media-fetch",
+        )
         self._pos_anchor_ms = 0
         self._pos_anchor_mono = time.monotonic()
         self._pos_playing = False
@@ -133,6 +138,7 @@ class MiniplayerApp:
         self._stopping = True
         log.info("Quit requested")
         self._persist_settings()
+        self._fetch_executor.shutdown(wait=False, cancel_futures=True)
         self._tray.stop()
         self._window.destroy()
 
@@ -163,7 +169,7 @@ class MiniplayerApp:
                         duration_ms=track.duration_ms,
                         position_ms=self._effective_position_ms(),
                         is_playing=self._pos_playing,
-                        thumbnail_bytes=track.thumbnail_bytes,
+                        thumbnail_bytes=None,
                     )
                 )
             if track is not None and self._window.has_timed_lyrics:
@@ -356,15 +362,13 @@ class MiniplayerApp:
             return
 
         self._window.show_state("loading", detail=track.title)
-        worker = threading.Thread(
-            target=self._fetch_lyrics_worker,
-            args=(track, generation),
-            daemon=True,
-            name="lyrics-fetch",
-        )
-        worker.start()
+        self._fetch_executor.submit(self._fetch_lyrics_worker, track, generation)
 
     def _fetch_lyrics_worker(self, track: NowPlaying, generation: int) -> None:
+        # Skip superseded work queued behind a newer track change.
+        if generation != self._fetch_generation or self._stopping:
+            return
+
         # Art first so it can paint as soon as iTunes returns, without waiting
         # on LRCLIB. Never clear existing art on failure — previous cover stays.
         try:
@@ -374,13 +378,16 @@ class MiniplayerApp:
         except Exception:
             log.exception("Album art fetch failed")
             thumb_bytes = None
-        if thumb_bytes and not self._stopping:
+        if thumb_bytes and not self._stopping and generation == self._fetch_generation:
             self._window.schedule(
                 lambda data=thumb_bytes: self._apply_album_art(data, generation)
             )
 
+        if generation != self._fetch_generation or self._stopping:
+            return
+
         result = self._lyrics.fetch(track)
-        if self._stopping:
+        if self._stopping or generation != self._fetch_generation:
             return
         self._window.schedule(
             lambda: self._apply_lyrics_result(result, generation)

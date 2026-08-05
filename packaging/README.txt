@@ -1,4 +1,4 @@
-Spotify Lyrics Miniplayer v1.1.0
+Spotify Lyrics Miniplayer v1.2.0
 ================================
 
 A floating Windows miniplayer that shows the current Spotify track and
@@ -29,6 +29,12 @@ If you trust that download:
 
 Windows usually only asks once. If antivirus quarantines the file, restore
 or allow it the same way you would for other tools you chose to install.
+
+Verifying the download
+----------------------
+Each GitHub Release also includes SHA256SUMS, sbom.cdx.json, and
+PROVENANCE.md. Compare the zip/exe hash to SHA256SUMS before running.
+See the project README for PowerShell verification commands.
 
 How to use
 ----------

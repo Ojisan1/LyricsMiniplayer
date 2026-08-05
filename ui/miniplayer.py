@@ -1022,8 +1022,8 @@ class MiniplayerWindow:
             track.artist or "Unknown artist",
             self._status_text(track),
         )
-        if track.thumbnail_bytes:
-            self.set_album_art(track.thumbnail_bytes)
+        # Album art is set only via set_album_art() from the iTunes fetch path.
+        # SMTC thumbnails are intentionally not used for display.
 
     def _status_text(self, track: NowPlaying) -> str:
         """Elapsed / total, plus whether the highlight is real timing data."""

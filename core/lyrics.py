@@ -8,6 +8,9 @@ from typing import Any
 
 import requests
 
+from core.cache import media_cache
+from core.http_limits import read_json_object
+from core.limits import MAX_JSON_BYTES, MAX_LYRIC_LINES, MAX_LYRIC_TEXT_BYTES
 from core.models import LyricLine, LyricsResult, NowPlaying
 
 log = logging.getLogger(__name__)
@@ -22,9 +25,10 @@ _LRC_OFFSET = re.compile(r"\[offset\s*:\s*(-?\d+)\]", re.IGNORECASE)
 _LRC_METADATA = re.compile(r"^\[\s*[a-zA-Z][a-zA-Z0-9_-]*\s*:")
 
 
-def _cache_key(track: NowPlaying) -> tuple[str, str, str, int]:
+def _cache_key(track: NowPlaying) -> tuple[str, str, str, str, int]:
     duration_s = max(0, track.duration_ms // 1000)
     return (
+        "lyrics",
         track.title.strip().lower(),
         track.artist.strip().lower(),
         track.album.strip().lower(),
@@ -39,6 +43,18 @@ def _is_cacheable(result: LyricsResult) -> bool:
     if result.error == "No lyrics found":
         return True
     return False
+
+
+def _result_size_bytes(result: LyricsResult) -> int:
+    size = 0
+    if result.plain_lyrics:
+        size += len(result.plain_lyrics.encode("utf-8", errors="replace"))
+    if result.timed_lines:
+        for line in result.timed_lines:
+            size += len(line.text.encode("utf-8", errors="replace")) + 8
+    if result.error:
+        size += len(result.error.encode("utf-8", errors="replace"))
+    return size
 
 
 def _safe_str(value: Any) -> str | None:
@@ -64,6 +80,9 @@ def parse_lrc(synced: str) -> list[LyricLine]:
 
     lines: list[LyricLine] = []
     for raw in synced.splitlines():
+        if len(lines) >= MAX_LYRIC_LINES:
+            log.warning("LRC exceeded %d lines; truncating parse", MAX_LYRIC_LINES)
+            break
         line = raw.strip()
         if not line:
             continue
@@ -76,6 +95,8 @@ def parse_lrc(synced: str) -> list[LyricLine]:
 
         text = line[stamps[-1].end() :].strip()
         for stamp in stamps:
+            if len(lines) >= MAX_LYRIC_LINES:
+                break
             minutes = int(stamp.group(1))
             seconds = int(stamp.group(2))
             frac = stamp.group(3) or "0"
@@ -107,6 +128,8 @@ def _strip_lrc_timestamps(synced: str) -> str:
 
     lines: list[str] = []
     for raw in synced.splitlines():
+        if len(lines) >= MAX_LYRIC_LINES:
+            break
         line = raw.strip()
         if not line:
             continue
@@ -117,6 +140,43 @@ def _strip_lrc_timestamps(synced: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _text_byte_len(text: str) -> int:
+    return len(text.encode("utf-8", errors="replace"))
+
+
+def _enforce_lyric_bounds(result: LyricsResult, source: str) -> LyricsResult:
+    """Reject lyrics that exceed line or total-text caps."""
+    if result.error and not result.plain_lyrics and not result.timed_lines:
+        return result
+
+    total_bytes = 0
+    if result.plain_lyrics:
+        total_bytes += _text_byte_len(result.plain_lyrics)
+    if result.timed_lines:
+        if len(result.timed_lines) > MAX_LYRIC_LINES:
+            log.warning("Lyrics from %s exceeded %d lines; rejecting", source, MAX_LYRIC_LINES)
+            return LyricsResult(error="Lyrics response too large", source=source)
+        for line in result.timed_lines:
+            total_bytes += _text_byte_len(line.text)
+
+    if total_bytes > MAX_LYRIC_TEXT_BYTES:
+        log.warning(
+            "Lyrics from %s exceeded %d text bytes (%d); rejecting",
+            source,
+            MAX_LYRIC_TEXT_BYTES,
+            total_bytes,
+        )
+        return LyricsResult(error="Lyrics response too large", source=source)
+
+    if result.plain_lyrics:
+        plain_lines = result.plain_lyrics.splitlines()
+        if len(plain_lines) > MAX_LYRIC_LINES:
+            log.warning("Plain lyrics from %s exceeded %d lines; rejecting", source, MAX_LYRIC_LINES)
+            return LyricsResult(error="Lyrics response too large", source=source)
+
+    return result
+
+
 def _result_from_payload(payload: dict[str, Any], source: str) -> LyricsResult:
     """Build a LyricsResult from an LRCLIB JSON object (untrusted input)."""
     if not isinstance(payload, dict):
@@ -125,6 +185,16 @@ def _result_from_payload(payload: dict[str, Any], source: str) -> LyricsResult:
     instrumental = bool(payload.get("instrumental"))
     plain = _safe_str(payload.get("plainLyrics"))
     synced = _safe_str(payload.get("syncedLyrics"))
+
+    # Reject oversized raw fields before LRC parsing expands timestamps.
+    raw_bytes = 0
+    if plain is not None:
+        raw_bytes += _text_byte_len(plain)
+    if synced is not None:
+        raw_bytes += _text_byte_len(synced)
+    if raw_bytes > MAX_LYRIC_TEXT_BYTES:
+        log.warning("LRCLIB payload text exceeded %d bytes (%s)", MAX_LYRIC_TEXT_BYTES, source)
+        return LyricsResult(error="Lyrics response too large", source=source)
 
     if instrumental and not plain and not synced:
         return LyricsResult(
@@ -146,20 +216,20 @@ def _result_from_payload(payload: dict[str, Any], source: str) -> LyricsResult:
     if plain is None and synced is not None:
         plain = _strip_lrc_timestamps(synced)
 
-    return LyricsResult(
+    result = LyricsResult(
         plain_lyrics=plain,
         timed_lines=timed_lines or None,
         source=source,
         is_instrumental=instrumental,
         error=None,
     )
+    return _enforce_lyric_bounds(result, source)
 
 
 class LyricsService:
     """Fetches and caches lyrics from LRCLIB (https://lrclib.net)."""
 
     def __init__(self) -> None:
-        self._cache: dict[tuple[str, str, str, int], LyricsResult] = {}
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -176,14 +246,14 @@ class LyricsService:
             return LyricsResult(error="Missing title or artist")
 
         key = _cache_key(track)
-        cached = self._cache.get(key)
-        if cached is not None:
+        cached = media_cache.get(key)
+        if isinstance(cached, LyricsResult):
             log.debug("Lyrics cache hit for %s - %s", artist, title)
             return cached
 
         result = self._fetch_uncached(track)
         if _is_cacheable(result):
-            self._cache[key] = result
+            media_cache.put(key, result, _result_size_bytes(result))
         return result
 
     def _fetch_uncached(self, track: NowPlaying) -> LyricsResult:
@@ -224,6 +294,7 @@ class LyricsService:
                 f"{LRCLIB_BASE}/get",
                 params=params,
                 timeout=REQUEST_TIMEOUT_S,
+                stream=True,
             )
         except requests.Timeout:
             log.warning("LRCLIB timed out (%s)", source)
@@ -232,22 +303,29 @@ class LyricsService:
             log.warning("LRCLIB network error (%s): %s", source, exc)
             return LyricsResult(error="Network error fetching lyrics", source=source)
 
-        if response.status_code == 404:
-            return LyricsResult(error="No lyrics found", source=source)
-        if response.status_code == 429:
-            retry = response.headers.get("Retry-After", "?")
-            log.warning("LRCLIB rate limited; Retry-After=%s", retry)
-            return LyricsResult(error="Lyrics rate limited — try again shortly", source=source)
-        if response.status_code != 200:
-            log.warning("LRCLIB HTTP %s (%s)", response.status_code, source)
-            return LyricsResult(
-                error=f"Lyrics service error ({response.status_code})",
-                source=source,
-            )
-
         try:
-            payload = response.json()
-        except ValueError:
+            if response.status_code == 404:
+                return LyricsResult(error="No lyrics found", source=source)
+            if response.status_code == 429:
+                retry = response.headers.get("Retry-After", "?")
+                log.warning("LRCLIB rate limited; Retry-After=%s", retry)
+                return LyricsResult(error="Lyrics rate limited — try again shortly", source=source)
+            if response.status_code != 200:
+                log.warning("LRCLIB HTTP %s (%s)", response.status_code, source)
+                return LyricsResult(
+                    error=f"Lyrics service error ({response.status_code})",
+                    source=source,
+                )
+
+            payload = read_json_object(
+                response,
+                max_bytes=MAX_JSON_BYTES,
+                label=f"LRCLIB {source}",
+            )
+        finally:
+            response.close()
+
+        if payload is None:
             return LyricsResult(error="Invalid lyrics response", source=source)
 
         return _result_from_payload(payload, source=source)
@@ -270,17 +348,24 @@ class LyricsService:
                 f"{LRCLIB_BASE}/search",
                 params=params,
                 timeout=REQUEST_TIMEOUT_S,
+                stream=True,
             )
         except requests.RequestException as exc:
             log.warning("LRCLIB search network error: %s", exc)
             return LyricsResult(error="Network error fetching lyrics", source="lrclib:/api/search")
 
-        if response.status_code != 200:
-            return None
-
         try:
-            payload = response.json()
-        except ValueError:
+            if response.status_code != 200:
+                return None
+            payload = read_json_object(
+                response,
+                max_bytes=MAX_JSON_BYTES,
+                label="LRCLIB /api/search",
+            )
+        finally:
+            response.close()
+
+        if payload is None:
             return None
 
         if not isinstance(payload, list) or not payload:
@@ -290,6 +375,8 @@ class LyricsService:
             if not isinstance(item, dict):
                 continue
             result = _result_from_payload(item, source="lrclib:/api/search")
+            if result.error == "Lyrics response too large":
+                continue
             if result.is_instrumental or result.plain_lyrics or result.timed_lines:
                 return result
 

@@ -16,12 +16,15 @@
 | Rel | v1.0.0 redistributable package | Completed |
 | Art-1.1 | Prefer SMTC album when ranking iTunes art | Completed (accepted) |
 | Rel | v1.1.0 redistributable package | Completed |
+| Sec | August 2026 security review remediation | Completed |
+| Rel | v1.2.0 redistributable package | Completed |
 
 ## Overall
 
-**v1.1.0 is packaged.** Album-aware iTunes art matching is in (prefers the SMTC album over
-compilations/singles). Redistributable output is `dist\LyricsMiniplayer-v1.1.0.zip`. Source,
-notes, and novice-friendly Installation / How to use docs live in the repo under MIT.
+**v1.2.0 is packaged.** Security hardening from the August 2026 review is in (bounded remote
+content, constrained artwork fetch, hashed lockfile, release checksums/SBOM/provenance).
+Redistributable output is `dist\LyricsMiniplayer-v1.2.0.zip`. See `RELEASE_NOTES_v1.2.0.md`
+and `SECURITY.md`.
 
 The UX polish session was delivered one tier at a time. Tiers 1 and 2 are accepted in full. In
 Tier 3, item 3.0 (title marquee), the window-shape fix and item 3.1 (window sizing presets) are
@@ -521,17 +524,23 @@ also reintroduce the credential handling the project has deliberately avoided.
 - Build: `build.ps1` → `dist\LyricsMiniplayer.exe`
 - Settings: `%APPDATA%\LyricsMiniplayer\settings.json`
 
+## v1.2.0 release package
+
+`build.ps1` builds the onefile exe and stages release artifacts under `dist\`:
+
+- `LyricsMiniplayer-v1.2.0.zip` — `LyricsMiniplayer.exe`, `README.txt`, `LICENSE`
+- `SHA256SUMS` — checksums for the exe and zip
+- `sbom.cdx.json` — CycloneDX SBOM from the hashed lockfile
+- `PROVENANCE.md` — Python version, lockfile hash, host OS/arch, build command
+
+Repo docs for the release: root `README.md`, `RELEASE_NOTES_v1.2.0.md`, `SECURITY.md`,
+`LICENSE`, `PHASE_STATUS.md`, and the product handoff. Attach the zip plus verification
+artifacts to a GitHub Release named `v1.2.0`; do not commit `dist/` (already gitignored).
+
 ## v1.1.0 release package
 
-`build.ps1` builds the onefile exe and stages `dist\LyricsMiniplayer-v1.1.0.zip` containing:
-
-- `LyricsMiniplayer.exe`
-- `README.txt` (from `packaging/README.txt`)
-- `LICENSE` (MIT)
-
-Repo docs for the release: root `README.md` (download + source instructions), `LICENSE`,
-`PHASE_STATUS.md`, and the product handoff. Attach the zip to a GitHub Release named `v1.0.0`;
-do not commit `dist/` (already gitignored).
+`build.ps1` (at the time) staged `dist\LyricsMiniplayer-v1.1.0.zip` containing the exe,
+`README.txt`, and `LICENSE`.
 
 ## Packaged build verification (2026-08-04, pre-v1 art pass)
 
@@ -556,5 +565,5 @@ Verified by launching the exe itself and inspecting the real window from a DPI-a
 coordinates back from `GetWindowRect`, which made the window first appear to be 420×500 physical.
 Call `SetProcessDpiAwareness(2)` in the querying process before measuring.
 
-Last updated: 2026-08-04 (v1.1.0: album-aware iTunes art, expanded Installation/How to use docs,
-release zip. Prior: v1.0.0 packaged, UX session closed, Tier 3 core items accepted)
+Last updated: 2026-08-04 (v1.2.0: security hardening, hashed deps, release verification artifacts.
+Prior: v1.1.0 album-aware iTunes art; v1.0.0 packaged, UX session closed)

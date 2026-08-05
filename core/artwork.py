@@ -5,20 +5,46 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from io import BytesIO
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 import requests
+from PIL import Image
+
+from core.cache import media_cache
+from core.http_limits import read_json_object, read_response_bytes
+from core.limits import (
+    MAX_ARTWORK_REDIRECTS,
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_DIMENSION,
+    MAX_JSON_BYTES,
+)
 
 log = logging.getLogger(__name__)
 
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
 USER_AGENT = "SpotifyLyricsMiniplayer/0.1 (https://github.com/local/LyricsMiniplayer)"
 REQUEST_TIMEOUT_S = 8
-_ART_MAX_BYTES = 5_000_000
 # iTunes artwork URLs end with a size token like 100x100bb.jpg.
 _ARTWORK_SIZE = re.compile(r"\d+x\d+bb", re.IGNORECASE)
 _PREFERRED_SIZES = ("1200x1200bb", "600x600bb")
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
+_ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+}
+_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG"}
+
+
+def _art_cache_key(title: str, artist: str, album: str) -> tuple[str, str, str, str]:
+    return (
+        "art",
+        title.strip().lower(),
+        artist.strip().lower(),
+        album.strip().lower(),
+    )
 
 
 def _artwork_url(artwork_url_100: str, size_token: str) -> str:
@@ -32,24 +58,116 @@ def _normalize(text: str) -> str:
     return _NON_ALNUM.sub(" ", ascii_ish.casefold()).strip()
 
 
-def _download_image(url: str, session: requests.Session) -> bytes | None:
-    """Download image bytes with a hard size cap. Returns None on any failure."""
+def _host_allowed(hostname: str | None, *, for_artwork: bool) -> bool:
+    host = (hostname or "").lower().rstrip(".")
+    if not host:
+        return False
+    if for_artwork:
+        return host == "mzstatic.com" or host.endswith(".mzstatic.com")
+    return host in {"itunes.apple.com", "www.itunes.apple.com"}
+
+
+def _is_allowed_url(url: str, *, for_artwork: bool) -> bool:
     try:
-        response = session.get(url, timeout=REQUEST_TIMEOUT_S, stream=True)
-        response.raise_for_status()
-        chunks: list[bytes] = []
-        total = 0
-        for chunk in response.iter_content(chunk_size=64_000):
-            if not chunk:
-                continue
-            total += len(chunk)
-            if total > _ART_MAX_BYTES:
-                log.warning("Album art exceeded %d bytes; discarding", _ART_MAX_BYTES)
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if parsed.scheme != "https":
+        return False
+    if parsed.username or parsed.password:
+        return False
+    if parsed.port not in (None, 443):
+        return False
+    return _host_allowed(parsed.hostname, for_artwork=for_artwork)
+
+
+def _content_type_allowed(content_type: str | None) -> bool:
+    if not content_type:
+        return False
+    media_type = content_type.split(";", 1)[0].strip().lower()
+    return media_type in _ALLOWED_IMAGE_TYPES
+
+
+def _validate_image_bytes(data: bytes) -> bytes | None:
+    """Accept JPEG/PNG under dimension caps using header inspection only."""
+    if not data or len(data) > MAX_IMAGE_BYTES:
+        return None
+    try:
+        with Image.open(BytesIO(data)) as image:
+            if image.format not in _ALLOWED_IMAGE_FORMATS:
+                log.warning("Album art format %r rejected", image.format)
                 return None
-            chunks.append(chunk)
-        if not chunks:
-            return None
-        return b"".join(chunks)
+            width, height = image.size
+            if (
+                width < 1
+                or height < 1
+                or width > MAX_IMAGE_DIMENSION
+                or height > MAX_IMAGE_DIMENSION
+            ):
+                log.warning(
+                    "Album art dimensions %dx%d exceed %d; discarding",
+                    width,
+                    height,
+                    MAX_IMAGE_DIMENSION,
+                )
+                return None
+        return data
+    except Exception:
+        log.debug("Album art failed image header validation", exc_info=True)
+        return None
+
+
+def _download_image(url: str, session: requests.Session) -> bytes | None:
+    """Download image bytes with URL, redirect, type, size, and dimension checks."""
+    current = url
+    try:
+        for _ in range(MAX_ARTWORK_REDIRECTS + 1):
+            if not _is_allowed_url(current, for_artwork=True):
+                log.warning("Album art URL rejected: %s", current)
+                return None
+
+            response = session.get(
+                current,
+                timeout=REQUEST_TIMEOUT_S,
+                stream=True,
+                allow_redirects=False,
+            )
+            try:
+                if response.is_redirect or response.status_code in {
+                    301,
+                    302,
+                    303,
+                    307,
+                    308,
+                }:
+                    location = response.headers.get("Location")
+                    if not location:
+                        return None
+                    current = urljoin(current, location)
+                    continue
+
+                response.raise_for_status()
+                if not _content_type_allowed(response.headers.get("Content-Type")):
+                    log.warning(
+                        "Album art Content-Type rejected: %s",
+                        response.headers.get("Content-Type"),
+                    )
+                    return None
+
+                raw = read_response_bytes(
+                    response,
+                    max_bytes=MAX_IMAGE_BYTES,
+                    label="Album art",
+                )
+            finally:
+                response.close()
+
+            if raw is None:
+                return None
+            return _validate_image_bytes(raw)
+
+        log.warning("Album art exceeded %d redirects", MAX_ARTWORK_REDIRECTS)
+        return None
     except requests.RequestException:
         log.debug("Album art download failed for %s", url, exc_info=True)
         return None
@@ -116,6 +234,9 @@ def _pick_artwork_url(
         url = item.get("artworkUrl100")
         if not isinstance(url, str) or not url.strip() or not _ARTWORK_SIZE.search(url):
             continue
+        candidate = url.strip()
+        if not _is_allowed_url(candidate, for_artwork=True):
+            continue
         score = _score_result(
             item,
             title_norm=title_norm,
@@ -124,7 +245,7 @@ def _pick_artwork_url(
         )
         if score < 0:
             continue
-        ranked.append((score, -index, url.strip()))
+        ranked.append((score, -index, candidate))
 
     if not ranked:
         return None
@@ -137,6 +258,45 @@ def _pick_artwork_url(
         title,
     )
     return best_url
+
+
+def _itunes_search(
+    session: requests.Session,
+    term: str,
+) -> list[Any] | None:
+    if not _is_allowed_url(ITUNES_SEARCH_URL, for_artwork=False):
+        return None
+    response = session.get(
+        ITUNES_SEARCH_URL,
+        params={
+            "term": term,
+            "media": "music",
+            "entity": "song",
+            "limit": 15,
+        },
+        timeout=REQUEST_TIMEOUT_S,
+        stream=True,
+        allow_redirects=False,
+    )
+    try:
+        if response.is_redirect:
+            log.warning("iTunes search redirected unexpectedly")
+            return None
+        response.raise_for_status()
+        payload = read_json_object(
+            response,
+            max_bytes=MAX_JSON_BYTES,
+            label="iTunes search",
+        )
+    finally:
+        response.close()
+
+    if not isinstance(payload, dict):
+        return None
+    results = payload.get("results")
+    if not isinstance(results, list):
+        return None
+    return results
 
 
 def fetch_album_art(title: str, artist: str, album: str = "") -> bytes | None:
@@ -152,52 +312,37 @@ def fetch_album_art(title: str, artist: str, album: str = "") -> bytes | None:
     if not title and not artist:
         return None
 
+    cache_key = _art_cache_key(title, artist, album)
+    cached = media_cache.get(cache_key)
+    if isinstance(cached, (bytes, bytearray)):
+        log.debug("Album art cache hit for %r", term)
+        return bytes(cached)
+
     try:
         with requests.Session() as session:
             session.headers["User-Agent"] = USER_AGENT
-            response = session.get(
-                ITUNES_SEARCH_URL,
-                params={
-                    "term": term,
-                    "media": "music",
-                    "entity": "song",
-                    "limit": 15,
-                },
-                timeout=REQUEST_TIMEOUT_S,
-            )
-            response.raise_for_status()
-            payload = response.json()
+            results = _itunes_search(session, term)
     except (requests.RequestException, ValueError):
         log.exception("iTunes album art search failed")
         return None
 
-    results = payload.get("results") if isinstance(payload, dict) else None
-    if not isinstance(results, list):
-        return None
+    artwork_url_100 = None
+    if results is not None:
+        artwork_url_100 = _pick_artwork_url(
+            results, title=title, artist=artist, album=album
+        )
 
-    artwork_url_100 = _pick_artwork_url(
-        results, title=title, artist=artist, album=album
-    )
     # If album-qualified search over-filtered, retry without album in the term
     # but still score against the album when ranking.
     if artwork_url_100 is None and album:
         try:
             with requests.Session() as session:
                 session.headers["User-Agent"] = USER_AGENT
-                response = session.get(
-                    ITUNES_SEARCH_URL,
-                    params={
-                        "term": " ".join(part for part in (title, artist) if part),
-                        "media": "music",
-                        "entity": "song",
-                        "limit": 15,
-                    },
-                    timeout=REQUEST_TIMEOUT_S,
+                results = _itunes_search(
+                    session,
+                    " ".join(part for part in (title, artist) if part),
                 )
-                response.raise_for_status()
-                payload = response.json()
-            results = payload.get("results") if isinstance(payload, dict) else None
-            if isinstance(results, list):
+            if results is not None:
                 artwork_url_100 = _pick_artwork_url(
                     results, title=title, artist=artist, album=album
                 )
@@ -220,6 +365,7 @@ def fetch_album_art(title: str, artist: str, album: str = "") -> bytes | None:
                         len(data),
                         size_token,
                     )
+                    media_cache.put(cache_key, data, len(data))
                     return data
     except Exception:
         log.exception("iTunes album art download failed")

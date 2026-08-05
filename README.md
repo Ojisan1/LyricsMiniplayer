@@ -1,12 +1,12 @@
 # Spotify Lyrics Miniplayer
 
-**Version 1.1.0**
+**Version 1.2.0**
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
 ## Installation
 
-1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.1.0.zip`.
+1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.2.0.zip`.
 2. Right-click the zip → **Extract All…** (or unzip with your usual tool) into any folder you like — Desktop, Documents, a USB stick, etc. There is **no installer**.
 3. Start the **Spotify desktop app** and play a track (the miniplayer reads what Windows reports as “now playing”).
 4. Open the unzipped folder and double-click **`LyricsMiniplayer.exe`**.
@@ -23,6 +23,27 @@ If you downloaded the zip from **this project’s GitHub Releases** and trust th
 2. Click **Run anyway**.
 
 Windows usually only asks once for that file. If your antivirus quarantines the exe, restore/allow it the same way you would for other small open-source tools you chose to install.
+
+### Verifying the release
+
+Each GitHub Release also publishes:
+
+| Artifact | Purpose |
+|----------|---------|
+| `SHA256SUMS` | SHA-256 digests of `LyricsMiniplayer.exe` and the release zip |
+| `sbom.cdx.json` | CycloneDX software bill of materials for the build environment |
+| `PROVENANCE.md` | Python version, lockfile hash, host OS/arch, and exact build command |
+
+**PowerShell** (from the folder that contains the downloaded files):
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\LyricsMiniplayer-v1.2.0.zip
+Get-Content .\SHA256SUMS
+```
+
+Confirm the hash matches the corresponding line in `SHA256SUMS`. Optionally open `PROVENANCE.md` and `sbom.cdx.json` to see how that binary was built and which packages it included.
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and a summary of the August 2026 security review.
 
 ## How to use
 
@@ -71,6 +92,7 @@ Lyric scrolling and the title marquee both honour the Windows **“Show animatio
 
 ## Status
 
+**v1.2.0** — security hardening: bounded remote content, constrained artwork fetch, hashed dependency lock, release checksums/SBOM/provenance. See [RELEASE_NOTES_v1.2.0.md](RELEASE_NOTES_v1.2.0.md).  
 **v1.1.0** — album-aware iTunes art matching (prefers the album Spotify is playing over compilations/singles).  
 **v1.0.0** — timed lyrics, UX polish, high-res iTunes art, redistributable zip.
 
@@ -88,8 +110,15 @@ See `PHASE_STATUS.md` for history and `Spotify-Lyrics-Miniplayer-Product-Handoff
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt
 python main.py
+```
+
+`requirements.txt` is a fully pinned lockfile with hashes. Edit `requirements.in` and recompile when upgrading dependencies:
+
+```bash
+pip install uv
+uv pip compile --generate-hashes -o requirements.txt requirements.in
 ```
 
 ### Optional CLI helpers
@@ -98,18 +127,28 @@ python main.py
 - `python main.py --console` — console-only now-playing monitor
 - `python main.py --lyrics-test` — fetch lyrics for the current track
 
+### Pre-release security check
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\scripts\security-check.ps1
+```
+
+Runs `pip check`, `pip-audit` against the lockfile, and a compile-all pass.
+
 ## Build a redistributable zip
 
 ```bash
 .venv\Scripts\activate
-pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-This produces:
+This installs from the hashed lockfile and produces:
 
 - `dist\LyricsMiniplayer.exe` — windowed, no console
-- `dist\LyricsMiniplayer-v1.1.0.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
+- `dist\LyricsMiniplayer-v1.2.0.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
+- `dist\SHA256SUMS` — checksums for the exe and zip
+- `dist\sbom.cdx.json` — CycloneDX SBOM
+- `dist\PROVENANCE.md` — build environment and command
 
 ## How it works
 
@@ -126,10 +165,16 @@ This produces:
 | `core/smtc.py` | Spotify now-playing via SMTC |
 | `core/lyrics.py` | LRCLIB client + LRC parse |
 | `core/artwork.py` | iTunes album art fetch |
+| `core/limits.py` | Hard caps for untrusted remote content |
 | `core/settings.py` | Persistent settings |
 | `ui/miniplayer.py` | Floating window, size presets, state screens, art zoom, title marquee |
 | `ui/tray.py` | System tray |
+| `requirements.in` | Direct dependency constraints |
+| `requirements.txt` | Pinned lockfile with hashes |
+| `scripts/security-check.ps1` | Local pre-release dependency audit |
 | `packaging/README.txt` | Short readme bundled in the release zip |
+| `SECURITY.md` | Vulnerability reporting and review summary |
+| `RELEASE_NOTES_v1.2.0.md` | v1.2.0 changelog |
 | `PHASE_STATUS.md` | Phase checklist and UX notes |
 | `Spotify-Lyrics-Miniplayer-Product-Handoff.md` | Product spec (source of truth) |
 
