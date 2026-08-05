@@ -184,7 +184,14 @@ This installs from the hashed lockfile and produces:
 | `core/artwork.py` | iTunes album art fetch |
 | `core/limits.py` | Hard caps for untrusted remote content |
 | `core/settings.py` | Persistent settings |
-| `ui/miniplayer.py` | Floating window, size presets, state screens, art zoom, title marquee |
+| `ui/miniplayer.py` | Floating window shell + public `MiniplayerWindow` entry |
+| `ui/theme.py` | Colors, fonts, size presets, shared UI constants |
+| `ui/win32_geom.py` | Work area, DPI scaling, rounded window region |
+| `ui/lyrics_panel.py` | Lyrics textbox, state screens, sync scroll |
+| `ui/title_marquee.py` | Overflowing title marquee |
+| `ui/album_art.py` / `ui/art_images.py` | Thumbnail, hover, zoom overlay |
+| `ui/settings_panel.py` | Settings panel controls |
+| `ui/tooltip.py` | Hover tooltips |
 | `ui/tray.py` | System tray |
 | `requirements.in` | Direct dependency constraints |
 | `requirements.txt` | Pinned lockfile with hashes |
