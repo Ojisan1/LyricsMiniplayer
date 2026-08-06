@@ -4,8 +4,6 @@
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
-![Spotify Lyrics Miniplayer showing timed lyrics and album art](docs/images/miniplayer-hero.png)
-
 ![Short demo of the floating miniplayer with synced lyrics](docs/images/miniplayer-demo.gif)
 
 ## Installation
