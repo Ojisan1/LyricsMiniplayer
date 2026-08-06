@@ -24,6 +24,10 @@ _LRC_TIMESTAMP = re.compile(r"\[(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?\]")
 _LRC_OFFSET = re.compile(r"\[offset\s*:\s*(-?\d+)\]", re.IGNORECASE)
 _LRC_METADATA = re.compile(r"^\[\s*[a-zA-Z][a-zA-Z0-9_-]*\s*:")
 
+# Plain lyrics longer than this with no line breaks are treated as a bad upload
+# (LRCLIB occasionally stores an entire song as one space-separated run).
+_DEGENERATE_PLAIN_MIN_CHARS = 80
+
 
 def _cache_key(track: NowPlaying) -> tuple[str, str, str, str, int]:
     duration_s = max(0, track.duration_ms // 1000)
@@ -57,13 +61,25 @@ def _result_size_bytes(result: LyricsResult) -> int:
     return size
 
 
+def _normalize_newlines(text: str) -> str:
+    """Canonicalize CR/LF variants to ``\\n`` for Tk Text on Windows."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _safe_str(value: Any) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
         return None
-    text = value.strip()
+    text = _normalize_newlines(value).strip()
     return text or None
+
+
+def _is_degenerate_plain(plain: str) -> bool:
+    """Return True for long plain lyrics with no line breaks at all."""
+    if "\n" in plain:
+        return False
+    return len(plain) >= _DEGENERATE_PLAIN_MIN_CHARS
 
 
 def parse_lrc(synced: str) -> list[LyricLine]:
@@ -215,6 +231,13 @@ def _result_from_payload(payload: dict[str, Any], source: str) -> LyricsResult:
     timed_lines = parse_lrc(synced) if synced else []
     if plain is None and synced is not None:
         plain = _strip_lrc_timestamps(synced)
+
+    # Some LRCLIB records store an entire song as one space-separated blob with
+    # no CR/LF. Accepting that blocks /api/search from finding a better copy.
+    # Timed results are kept even when the accompanying plain field is junk.
+    if not timed_lines and plain is not None and _is_degenerate_plain(plain):
+        log.warning("Rejecting degenerate single-line plain lyrics (%s)", source)
+        return LyricsResult(error="No usable lyrics in response", source=source)
 
     result = LyricsResult(
         plain_lyrics=plain,
