@@ -22,13 +22,17 @@
 | Rel | v1.1.0 redistributable package | Completed |
 | Sec | August 2026 security review remediation | Completed |
 | Rel | v1.2.0 redistributable package | Completed |
+| Fix | Reject degenerate plain-only LRCLIB lyrics | Completed |
+| Rel | v1.2.1 redistributable package | Completed |
 
 ## Overall
 
-**v1.2.0 is packaged.** Security hardening from the August 2026 review is in (bounded remote
-content, constrained artwork fetch, hashed lockfile, release checksums/SBOM/provenance).
-Redistributable output is `dist\LyricsMiniplayer-v1.2.0.zip`. See `RELEASE_NOTES_v1.2.0.md`
-and `SECURITY.md`.
+**v1.2.1 is packaged.** Plain-lyrics ingest now rejects run-on LRCLIB blobs with no line
+breaks so search can return multiline (often timed) copies. Redistributable output is
+`dist\LyricsMiniplayer-v1.2.1.zip`. See `RELEASE_NOTES_v1.2.1.md`.
+
+v1.2.0 security hardening remains in place (bounded remote content, constrained artwork
+fetch, hashed lockfile, release checksums/SBOM/provenance). See `SECURITY.md`.
 
 The UX polish session was delivered one tier at a time. Tiers 1 and 2 are accepted in full. In
 Tier 3, item 3.0 (title marquee), the window-shape fix and item 3.1 (window sizing presets) are
@@ -528,18 +532,23 @@ also reintroduce the credential handling the project has deliberately avoided.
 - Build: `build.ps1` → `dist\LyricsMiniplayer.exe`
 - Settings: `%APPDATA%\LyricsMiniplayer\settings.json`
 
-## v1.2.0 release package
+## v1.2.1 release package
 
 `build.ps1` builds the onefile exe and stages release artifacts under `dist\`:
 
-- `LyricsMiniplayer-v1.2.0.zip` — `LyricsMiniplayer.exe`, `README.txt`, `LICENSE`
+- `LyricsMiniplayer-v1.2.1.zip` — `LyricsMiniplayer.exe`, `README.txt`, `LICENSE`
 - `SHA256SUMS` — checksums for the exe and zip
 - `sbom.cdx.json` — CycloneDX SBOM from the hashed lockfile
 - `PROVENANCE.md` — Python version, lockfile hash, host OS/arch, build command
 
-Repo docs for the release: root `README.md`, `RELEASE_NOTES_v1.2.0.md`, `SECURITY.md`,
+Repo docs for the release: root `README.md`, `RELEASE_NOTES_v1.2.1.md`, `SECURITY.md`,
 `LICENSE`, `PHASE_STATUS.md`, and the product handoff. Attach the zip plus verification
-artifacts to a GitHub Release named `v1.2.0`; do not commit `dist/` (already gitignored).
+artifacts to a GitHub Release named `v1.2.1`; do not commit `dist/` (already gitignored).
+
+## v1.2.0 release package
+
+Same artifact set as v1.2.1; zip name was `LyricsMiniplayer-v1.2.0.zip`. See
+`RELEASE_NOTES_v1.2.0.md`.
 
 ## v1.1.0 release package
 
@@ -569,5 +578,5 @@ Verified by launching the exe itself and inspecting the real window from a DPI-a
 coordinates back from `GetWindowRect`, which made the window first appear to be 420×500 physical.
 Call `SetProcessDpiAwareness(2)` in the querying process before measuring.
 
-Last updated: 2026-08-04 (v1.2.0: security hardening, hashed deps, release verification artifacts.
-Prior: v1.1.0 album-aware iTunes art; v1.0.0 packaged, UX session closed)
+Last updated: 2026-08-05 (v1.2.1: reject degenerate plain LRCLIB lyrics / fall through to search.
+Prior: v1.2.0 security hardening; v1.1.0 album-aware iTunes art; v1.0.0 packaged)

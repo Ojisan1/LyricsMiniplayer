@@ -1,4 +1,4 @@
-Spotify Lyrics Miniplayer v1.2.0
+Spotify Lyrics Miniplayer v1.2.1
 ================================
 
 A floating Windows miniplayer that shows the current Spotify track and

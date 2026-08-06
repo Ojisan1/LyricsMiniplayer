@@ -1,7 +1,7 @@
 # Product Requirements & Implementation Handoff
 
 **Project Name:** Spotify Lyrics Miniplayer  
-**Version:** 1.2.0  
+**Version:** 1.2.1 
 **Date:** 2026-08-04 (original); status updated 2026-08-05  
 **Status:** Shipped (historical product / implementation spec — not a “ready for development” brief)  
 

@@ -1,6 +1,6 @@
 # Spotify Lyrics Miniplayer
 
-**Version 1.2.0**
+**Version 1.2.1**
 
 A lightweight, always-on-top Windows floating miniplayer that shows the currently playing Spotify track and time-synced lyrics with high resolution album art — with zero Spotify API keys or account linking.
 
@@ -8,7 +8,7 @@ A lightweight, always-on-top Windows floating miniplayer that shows the currentl
 
 ## Installation
 
-1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.2.0.zip`.
+1. Open this repository’s **[Releases](https://github.com/Ojisan1/LyricsMiniplayer/releases)** page and download `LyricsMiniplayer-v1.2.1.zip`.
 2. Right-click the zip → **Extract All…** (or unzip with your usual tool) into any folder you like — Desktop, Documents, a USB stick, etc. There is **no installer**.
 3. Start the **Spotify desktop app** and play a track (the miniplayer reads what Windows reports as “now playing”).
 4. Open the unzipped folder and double-click **`LyricsMiniplayer.exe`**.
@@ -39,7 +39,7 @@ Each GitHub Release also publishes:
 **PowerShell** (from the folder that contains the downloaded files):
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\LyricsMiniplayer-v1.2.0.zip
+Get-FileHash -Algorithm SHA256 .\LyricsMiniplayer-v1.2.1.zip
 Get-Content .\SHA256SUMS
 ```
 
@@ -94,6 +94,7 @@ Lyric scrolling and the title marquee both honour the Windows **“Show animatio
 
 ## Status
 
+**v1.2.1** — reject run-on LRCLIB plain lyrics so search can find multiline/timed copies. See [RELEASE_NOTES_v1.2.1.md](RELEASE_NOTES_v1.2.1.md).  
 **v1.2.0** — security hardening: bounded remote content, constrained artwork fetch, hashed dependency lock, release checksums/SBOM/provenance. See [RELEASE_NOTES_v1.2.0.md](RELEASE_NOTES_v1.2.0.md).  
 **v1.1.0** — album-aware iTunes art matching (prefers the album Spotify is playing over compilations/singles).  
 **v1.0.0** — timed lyrics, UX polish, high-res iTunes art, redistributable zip.
@@ -160,7 +161,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 This installs from the hashed lockfile and produces:
 
 - `dist\LyricsMiniplayer.exe` — windowed, no console
-- `dist\LyricsMiniplayer-v1.2.0.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
+- `dist\LyricsMiniplayer-v1.2.1.zip` — exe + `README.txt` + `LICENSE` for GitHub Releases
 - `dist\SHA256SUMS` — checksums for the exe and zip
 - `dist\sbom.cdx.json` — CycloneDX SBOM
 - `dist\PROVENANCE.md` — build environment and command
@@ -196,6 +197,7 @@ This installs from the hashed lockfile and produces:
 | `scripts/security-check.ps1` | Local pre-release dependency audit |
 | `packaging/README.txt` | Short readme bundled in the release zip |
 | `SECURITY.md` | Vulnerability reporting and review summary |
+| `RELEASE_NOTES_v1.2.1.md` | v1.2.1 changelog |
 | `RELEASE_NOTES_v1.2.0.md` | v1.2.0 changelog |
 | `PHASE_STATUS.md` | Phase checklist and UX notes |
 | `Spotify-Lyrics-Miniplayer-Product-Handoff.md` | Product spec (source of truth) |
